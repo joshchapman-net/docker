@@ -1,0 +1,50 @@
+services:
+  wordpress-db:
+    image: mariadb:latest
+    container_name: wordpress-db
+    hostname: wordpress-db
+    command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/wordpress/mysql:/var/lib/mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=<MYSQL_ROOT_PASSWORD>
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+      - MYSQL_PASSWORD=<MYSQL_PASSWORD>
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    hostname: wordpress
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/wordpress/data:/var/www/html
+    restart: unless-stopped
+    environment:
+      - WORDPRESS_DB_HOST=wordpress-db
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=<WORDPRESS_DB_PASSWORD>
+      - WORDPRESS_DB_NAME=wordpress
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=<TUNNEL_TOKEN>
+
+networks:
+  default:
+    external:
+      name: wordpress
